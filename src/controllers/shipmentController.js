@@ -1,14 +1,16 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Create shipment
 exports.createShipment = async (req, res) => {
   const { order_id, shipment_type, courier_name, tracking_code } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO shipments (order_id, shipment_type, courier_name, tracking_code) VALUES (?, ?, ?, ?)',
-      [order_id, shipment_type, courier_name, tracking_code]
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO shipments (id, order_id, shipment_type, courier_name, tracking_code) VALUES (?, ?, ?, ?, ?)',
+      [id, order_id, shipment_type, courier_name, tracking_code]
     );
-    res.status(201).json({ id: result.insertId, message: 'Shipment created' });
+    res.status(201).json({ id, message: 'Shipment created' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Create order from cart
 exports.createOrder = async (req, res) => {
@@ -9,11 +10,11 @@ exports.createOrder = async (req, res) => {
     await connection.beginTransaction();
     
     // 1. Create Order
-    const [orderResult] = await connection.query(
-      'INSERT INTO orders (customer_id, store_id, address_id, subtotal_amount, shipping_amount, total_amount) VALUES (?, ?, ?, ?, ?, ?)',
-      [customer_id, store_id, address_id, subtotal_amount, shipping_amount, total_amount]
+    const orderId = crypto.randomUUID();
+    await connection.query(
+      'INSERT INTO orders (id, customer_id, store_id, address_id, subtotal_amount, shipping_amount, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [orderId, customer_id, store_id, address_id, subtotal_amount, shipping_amount, total_amount]
     );
-    const orderId = orderResult.insertId;
     
     // 2. Add Items
     for (const item of items) {

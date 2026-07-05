@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Get all products
 exports.getAllProducts = async (req, res) => {
@@ -28,11 +29,12 @@ exports.getProductById = async (req, res) => {
 exports.createProduct = async (req, res) => {
   const { store_id, category_id, brand_id, name, description, price, discount_price, stock } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO products (store_id, category_id, brand_id, name, description, price, discount_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [store_id, category_id, brand_id, name, description, price, discount_price, stock || 0]
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO products (id, store_id, category_id, brand_id, name, description, price, discount_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, store_id, category_id, brand_id, name, description, price, discount_price, stock || 0]
     );
-    res.status(201).json({ id: result.insertId, message: 'Product created' });
+    res.status(201).json({ id, message: 'Product created' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -37,12 +38,13 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const [result] = await db.query(
-      'INSERT INTO users (names, first_lastname, second_lastname, email, password, phone, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [names, first_lastname, second_lastname, email, hashedPassword, phone, role || 'customer']
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO users (id, names, first_lastname, second_lastname, email, password, phone, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, names, first_lastname, second_lastname, email, hashedPassword, phone, role || 'customer']
     );
 
-    res.status(201).json({ id: result.insertId, message: 'User registered successfully' });
+    res.status(201).json({ id, message: 'User registered successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

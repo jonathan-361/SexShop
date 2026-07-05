@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Get all stores
 exports.getAllStores = async (req, res) => {
@@ -25,11 +26,12 @@ exports.getStoreById = async (req, res) => {
 exports.createStore = async (req, res) => {
   const { owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO stores (owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate || 10.00]
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO stores (id, owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate || 10.00]
     );
-    res.status(211).json({ id: result.insertId, message: 'Store created' });
+    res.status(211).json({ id, message: 'Store created' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Get cart for user and store
 exports.getCart = async (req, res) => {
@@ -23,8 +24,8 @@ exports.addItemToCart = async (req, res) => {
     let cartId;
     
     if (cart.length === 0) {
-      const [newCart] = await db.query('INSERT INTO shopping_cart (user_id, store_id) VALUES (?, ?)', [user_id, store_id]);
-      cartId = newCart.insertId;
+      cartId = crypto.randomUUID();
+      await db.query('INSERT INTO shopping_cart (id, user_id, store_id) VALUES (?, ?, ?)', [cartId, user_id, store_id]);
     } else {
       cartId = cart[0].id;
     }

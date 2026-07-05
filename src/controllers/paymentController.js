@@ -1,14 +1,16 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Create payment
 exports.createPayment = async (req, res) => {
   const { order_id, payment_method, transaction_id, amount } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO payments (order_id, payment_method, transaction_id, amount) VALUES (?, ?, ?, ?)',
-      [order_id, payment_method, transaction_id, amount]
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO payments (id, order_id, payment_method, transaction_id, amount) VALUES (?, ?, ?, ?, ?)',
+      [id, order_id, payment_method, transaction_id, amount]
     );
-    res.status(201).json({ id: result.insertId, message: 'Payment recorded' });
+    res.status(201).json({ id, message: 'Payment recorded' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

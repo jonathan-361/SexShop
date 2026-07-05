@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const crypto = require('crypto');
 
 // Get all categories
 exports.getAllCategories = async (req, res) => {
@@ -14,11 +15,12 @@ exports.getAllCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   const { name, description, parent_category_id } = req.body;
   try {
-    const [result] = await db.query(
-      'INSERT INTO categories (name, description, parent_category_id) VALUES (?, ?, ?)',
-      [name, description, parent_category_id]
+    const id = crypto.randomUUID();
+    await db.query(
+      'INSERT INTO categories (id, name, description, parent_category_id) VALUES (?, ?, ?, ?)',
+      [id, name, description, parent_category_id]
     );
-    res.status(201).json({ id: result.insertId, message: 'Category created' });
+    res.status(201).json({ id, message: 'Category created' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
