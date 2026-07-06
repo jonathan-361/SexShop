@@ -26,3 +26,14 @@ exports.getPaymentByOrderId = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get payment by ID
+exports.getPaymentById = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Payment not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

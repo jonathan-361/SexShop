@@ -6,7 +6,7 @@ const crypto = require('crypto');
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id, names, first_lastname, second_lastname, email, phone, role, status, created_at FROM users');
+    const [rows] = await db.query('SELECT id, names, first_lastname, second_lastname, email, phone, role, status, created_at FROM users LIMIT 15');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });

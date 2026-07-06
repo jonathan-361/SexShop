@@ -29,3 +29,25 @@ exports.updateShipmentStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get shipment by ID
+exports.getShipmentById = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM shipments WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Shipment not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get shipment by order ID
+exports.getShipmentByOrderId = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM shipments WHERE order_id = ?', [req.params.orderId]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Shipment not found for this order' });
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

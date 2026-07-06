@@ -4,7 +4,7 @@ const crypto = require('crypto');
 // Get all products
 exports.getAllProducts = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM products');
+    const [rows] = await db.query('SELECT * FROM products LIMIT 15');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
