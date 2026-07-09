@@ -1,10 +1,19 @@
-const db = require('../config/db');
-const crypto = require('crypto');
+const db = require("../config/db");
+const crypto = require("crypto");
 
-// Get all stores
+// Get all stores (Con Paginación)
 exports.getAllStores = async (req, res) => {
+  const { page = 1, limit = 15 } = req.query;
+
+  const pageNum = parseInt(page, 10) || 1;
+  const limitNum = parseInt(limit, 10) || 15;
+  const offset = (pageNum - 1) * limitNum;
+
   try {
-    const [rows] = await db.query('SELECT * FROM stores LIMIT 15');
+    const [rows] = await db.query("SELECT * FROM stores LIMIT ? OFFSET ?", [
+      limitNum,
+      offset,
+    ]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -14,8 +23,11 @@ exports.getAllStores = async (req, res) => {
 // Get store by ID
 exports.getStoreById = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM stores WHERE id = ?', [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ message: 'Store not found' });
+    const [rows] = await db.query("SELECT * FROM stores WHERE id = ?", [
+      req.params.id,
+    ]);
+    if (rows.length === 0)
+      return res.status(404).json({ message: "Store not found" });
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -24,14 +36,33 @@ exports.getStoreById = async (req, res) => {
 
 // Create store
 exports.createStore = async (req, res) => {
-  const { owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate } = req.body;
+  const {
+    owner_id,
+    store_name,
+    store_description,
+    logo_url,
+    banner_url,
+    email,
+    phone,
+    commission_rate,
+  } = req.body;
   try {
     const id = crypto.randomUUID();
     await db.query(
-      'INSERT INTO stores (id, owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate || 10.00]
+      "INSERT INTO stores (id, owner_id, store_name, store_description, logo_url, banner_url, email, phone, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        id,
+        owner_id,
+        store_name,
+        store_description,
+        logo_url,
+        banner_url,
+        email,
+        phone,
+        commission_rate || 10.0,
+      ],
     );
-    res.status(211).json({ id, message: 'Store created' });
+    res.status(211).json({ id, message: "Store created" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -39,13 +70,32 @@ exports.createStore = async (req, res) => {
 
 // Update store
 exports.updateStore = async (req, res) => {
-  const { store_name, store_description, logo_url, banner_url, email, phone, commission_rate, status } = req.body;
+  const {
+    store_name,
+    store_description,
+    logo_url,
+    banner_url,
+    email,
+    phone,
+    commission_rate,
+    status,
+  } = req.body;
   try {
     await db.query(
-      'UPDATE stores SET store_name = ?, store_description = ?, logo_url = ?, banner_url = ?, email = ?, phone = ?, commission_rate = ?, status = ? WHERE id = ?',
-      [store_name, store_description, logo_url, banner_url, email, phone, commission_rate, status, req.params.id]
+      "UPDATE stores SET store_name = ?, store_description = ?, logo_url = ?, banner_url = ?, email = ?, phone = ?, commission_rate = ?, status = ? WHERE id = ?",
+      [
+        store_name,
+        store_description,
+        logo_url,
+        banner_url,
+        email,
+        phone,
+        commission_rate,
+        status,
+        req.params.id,
+      ],
     );
-    res.json({ message: 'Store updated' });
+    res.json({ message: "Store updated" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -54,8 +104,8 @@ exports.updateStore = async (req, res) => {
 // Delete store
 exports.deleteStore = async (req, res) => {
   try {
-    await db.query('DELETE FROM stores WHERE id = ?', [req.params.id]);
-    res.json({ message: 'Store deleted' });
+    await db.query("DELETE FROM stores WHERE id = ?", [req.params.id]);
+    res.json({ message: "Store deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
