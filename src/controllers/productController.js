@@ -1,7 +1,7 @@
 const db = require("../config/db");
 const crypto = require("crypto");
 
-// Get product by ID (con imágenes)
+// OBTENER PRODUCTO POR ID (Modificado para incluir url_image en el SELECT)
 exports.getProductById = async (req, res) => {
   try {
     const [products] = await db.query(
@@ -17,6 +17,7 @@ exports.getProductById = async (req, res) => {
     if (products.length === 0)
       return res.status(404).json({ message: "Producto no encontrado." });
 
+    // Mantenemos la consulta de la tabla intermedia por si manejas más imágenes secundarias
     const [images] = await db.query(
       "SELECT id, url, sort_order FROM product_images WHERE product_id = ? ORDER BY sort_order",
       [req.params.id],
@@ -28,7 +29,7 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-// GET /api/products (Con filtros avanzados dinámicos y PAGINACIÓN)
+// OBTENER TODOS LOS PRODUCTOS
 exports.getAllProducts = async (req, res) => {
   const {
     categories,
@@ -37,29 +38,35 @@ exports.getAllProducts = async (req, res) => {
     price,
     min_price,
     max_price,
-    page = 1, // Página por defecto
-    limit = 15, // Límite por defecto
+    page = 1,
+    limit = 15,
   } = req.query;
 
-  // Convertimos los parámetros de paginación a números enteros
   const pageNum = parseInt(page, 10) || 1;
   const limitNum = parseInt(limit, 10) || 15;
   const offset = (pageNum - 1) * limitNum;
 
-  // Base de la consulta SQL
+  // MODIFICADO: Se añade un LEFT JOIN para traer la primera url de product_images como image_url
   let sql = `
     SELECT p.id, p.category_id, p.brand_id, p.name, p.description,
            p.price, p.discount_price, p.stock, p.status, p.created_at,
-           b.name AS brand_name, c.name AS category_name
+           b.name AS brand_name, c.name AS category_name,
+           img.url AS image_url
     FROM products p
     LEFT JOIN brands b ON p.brand_id = b.id
     LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN (
+      SELECT product_id, url 
+      FROM product_images 
+      WHERE id IN (
+        SELECT MIN(id) FROM product_images GROUP BY product_id
+      )
+    ) img ON p.id = img.product_id
     WHERE 1=1
   `;
 
   const queryParams = [];
 
-  // 1. Filtro por Categorías
   if (categories) {
     const catList = Array.isArray(categories) ? categories : [categories];
     if (catList.length > 0) {
@@ -69,7 +76,6 @@ exports.getAllProducts = async (req, res) => {
     }
   }
 
-  // 2. Filtro por Marcas
   if (brands) {
     const brandList = Array.isArray(brands) ? brands : [brands];
     if (brandList.length > 0) {
@@ -79,13 +85,11 @@ exports.getAllProducts = async (req, res) => {
     }
   }
 
-  // 3. Filtro por Nombre
   if (name) {
     sql += ` AND p.name LIKE ?`;
     queryParams.push(`%${name}%`);
   }
 
-  // 4. Filtros por Precio
   if (price) {
     sql += ` AND p.price = ?`;
     queryParams.push(price);
@@ -102,7 +106,6 @@ exports.getAllProducts = async (req, res) => {
     }
   }
 
-  // 5. Aplicamos la paginación dinámica al final de la consulta
   sql += ` LIMIT ? OFFSET ?`;
   queryParams.push(limitNum, offset);
 
@@ -114,7 +117,8 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// Create product (Con soporte para múltiples imágenes usando transacciones)
+// CREAR PRODUCTO (Modificado para recibir url_image e insertarlo en la tabla)
+// 3. CREAR PRODUCTO (Insertando en products y en product_images)
 exports.createProduct = async (req, res) => {
   const {
     category_id,
@@ -124,20 +128,21 @@ exports.createProduct = async (req, res) => {
     price,
     discount_price,
     stock,
-    images,
+    images, // Recibimos el arreglo de URLs desde el frontend
   } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ message: "name y price son obligatorios." });
   }
 
-  const conn = await db.getConnection(); // Obtenemos una conexión del pool para la transacción
+  const conn = await db.getConnection();
   try {
-    await conn.beginTransaction(); // Iniciamos la transacción
+    await conn.beginTransaction();
 
+    // 1. Generamos el ID único para el producto
     const productId = crypto.randomUUID();
 
-    // 1. Insertar el producto en la tabla 'products'
+    // 2. Insertamos los datos base del producto en la tabla 'products'
     await conn.query(
       "INSERT INTO products (id, category_id, brand_id, name, description, price, discount_price, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       [
@@ -152,28 +157,30 @@ exports.createProduct = async (req, res) => {
       ],
     );
 
-    // 2. Si se enviaron imágenes, insertarlas en la tabla 'product_images'
+    // 3. Si el cliente envió imágenes, las registramos en 'product_images'
     if (images && Array.isArray(images) && images.length > 0) {
       for (let i = 0; i < images.length; i++) {
         const imageId = crypto.randomUUID();
         const imageUrl = images[i];
 
+        // Guardamos cada imagen vinculándola al productId mediante la Foreign Key
         await conn.query(
           "INSERT INTO product_images (id, product_id, url, sort_order) VALUES (?, ?, ?, ?)",
-          [imageId, productId, imageUrl, i], // 'i' actúa como el orden (sort_order)
+          [imageId, productId, imageUrl, i],
         );
       }
     }
 
-    await conn.commit(); // Confirmamos todos los cambios en la base de datos
-    res
-      .status(201)
-      .json({ id: productId, message: "Producto creado con sus imágenes." });
+    await conn.commit();
+    res.status(201).json({
+      id: productId,
+      message: "Producto creado correctamente junto con sus imágenes.",
+    });
   } catch (error) {
-    await conn.rollback(); // Si algo falla, deshacemos todos los inserts
+    await conn.rollback();
     res.status(500).json({ error: error.message });
   } finally {
-    conn.release(); // Liberamos la conexión de vuelta al pool
+    conn.release();
   }
 };
 

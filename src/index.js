@@ -15,6 +15,11 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
+// Si no estás en producción, agregamos automáticamente los puertos locales de Vite
+if (process.env.NODE_ENV !== "production") {
+  allowedOrigins.push("http://localhost:5173", "http://127.0.0.1:5173");
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
