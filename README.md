@@ -1,99 +1,249 @@
 # SexShop API
 
-Este es el backend para el proyecto SexShop, construido con Node.js, Express y MySQL (Clever Cloud).
+API RESTful para la plataforma de tiendas SexShop. Construida con **Node.js + Express + MySQL (Clever Cloud)**.
 
-## Requisitos Previos
+---
 
-- [Node.js](https://nodejs.org/) (v14 o superior)
-- [npm](https://www.npmjs.com/)
-- Una base de datos MySQL activa (puedes usar el archivo `esquema_db_mysql.sql` para crear las tablas).
+## Requisitos & Configuración
 
-## Pasos para Ejecutar
+### Instalación
+```bash
+npm install
+```
 
-1. **Instalar Dependencias**
-   Abre una terminal en la carpeta raíz del proyecto y ejecuta:
-   ```bash
-   npm install
-   ```
+### Variables de entorno (`.env`)
+```env
+PORT=3000
 
-2. **Configurar el Entorno**
-   Asegúrate de que el archivo `.env` tenga las credenciales correctas de tu base de datos Clever Cloud:
-   ```env
-   PORT=3000
-   DB_HOST=tu_host
-   DB_USER=tu_usuario
-   DB_PASSWORD=tu_password
-   DB_NAME=tu_base_de_datos
-   ```
+DB_HOST=<host_clever_cloud>
+DB_NAME=<nombre_bd>
+DB_USER=<usuario>
+DB_PASSWORD=<contraseña>
+DB_PORT=3306
 
-3. **Iniciar el Servidor**
-   Para producción:
-   ```bash
-   npm start
-   ```
-   Para desarrollo (requiere `nodemon` instalado):
-   ```bash
-   npm run dev
-   ```
+JWT_SECRET=<cadena_secreta_larga>
+JWT_EXPIRES_IN=24h
 
-## Estructura del Proyecto
+# CORS — orígenes permitidos (separados por coma)
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
 
-- `src/index.js`: Punto de entrada de la aplicación.
-- `src/routes/`: Definición de los endpoints.
-- `src/controllers/`: Lógica de negocio.
-- `src/config/db.js`: Configuración de la conexión a la base de datos.
-- `esquema_db_mysql.sql`: Script SQL para la base de datos.
+### Iniciar servidor
+```bash
+node src/index.js
+```
 
-## Endpoints de la API
+---
 
-A continuación se detallan los endpoints disponibles y actualizados, incluyendo la limitación a un máximo de 15 registros por petición en listados generales para mejorar el rendimiento del frontend.
+## Seguridad
 
-### 👤 Usuarios (`/api/users`)
-- **GET `/api/users`** - Obtiene los usuarios (Límite: 15 registros).
-- **GET `/api/users/:id`** - Obtiene información individual de un usuario por su ID.
-- **POST `/api/users/register`** - Registra un nuevo usuario.
-- **POST `/api/users/login`** - Inicia sesión de usuario (Retorna JWT).
-- **POST `/api/users`** - Registra o crea un usuario (Admin/Compatibilidad).
-- **PUT `/api/users/:id`** - Actualiza datos de un usuario por su ID.
-- **DELETE `/api/users/:id`** - Elimina un usuario por su ID.
+| Mecanismo | Descripción |
+|-----------|-------------|
+| **JWT (Bearer Token)** | Todas las rutas protegidas requieren `Authorization: Bearer <token>` |
+| **Roles** | `customer`, `store_owner`, `admin`. Endpoints de mantenimiento solo para `admin` |
+| **CORS** | Solo orígenes configurados en `ALLOWED_ORIGINS` son aceptados |
+| **Helmet** | Cabeceras HTTP de seguridad activadas automáticamente |
+| **Rate Limiting** | 200 req/15min por IP (general) · 10 req/15min en login/register |
 
-### 🏪 Tiendas (`/api/stores`)
-- **GET `/api/stores`** - Obtiene tiendas (Límite: 15 registros).
-- **GET `/api/stores/:id`** - Obtiene información individual de una tienda por su ID.
-- **POST `/api/stores`** - Crea una nueva tienda.
-- **PUT `/api/stores/:id`** - Actualiza datos de una tienda por su ID.
-- **DELETE `/api/stores/:id`** - Elimina una tienda de forma lógica/física por su ID.
+**Rutas públicas** (sin token): `/api/users/register`, `/api/users/login`  
+**Rutas protegidas**: todas las demás (requieren JWT válido)
 
-### 🏷️ Categorías (`/api/categories`)
-- **GET `/api/categories`** - Obtiene las categorías de productos (Límite: 15 registros).
-- **GET `/api/categories/:id`** - Obtiene información individual de una categoría por su ID.
-- **POST `/api/categories`** - Crea una nueva categoría.
+---
 
-### 🛡️ Marcas (`/api/brands`)
-- **GET `/api/brands`** - Obtiene las marcas de productos (Límite: 15 registros).
-- **GET `/api/brands/:id`** - Obtiene información individual de una marca por su ID.
-- **POST `/api/brands`** - Registra una nueva marca.
+## Endpoints
 
-### 📦 Productos (`/api/products`)
-- **GET `/api/products`** - Obtiene catálogo de productos (Límite: 15 registros).
-- **GET `/api/products/:id`** - Obtiene información individual y detallada de un producto con sus imágenes por su ID.
-- **POST `/api/products`** - Crea un nuevo producto.
+### 👤 Usuarios `/api/users`
 
-### 🛒 Carrito de Compras (`/api/cart`)
-- **GET `/api/cart?user_id=X&store_id=Y`** - Obtiene el carrito activo de un usuario para una tienda.
-- **POST `/api/cart/add`** - Agrega un producto o unidades al carrito.
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `POST` | `/register` | ❌ Pública | Registro de usuario |
+| `POST` | `/login` | ❌ Pública | Login → devuelve JWT |
+| `GET` | `/` | ✅ JWT | Listar usuarios (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener usuario por ID |
+| `PUT` | `/:id` | ✅ JWT | Actualizar usuario |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar usuario |
 
-### 🧾 Pedidos (`/api/orders`)
-- **GET `/api/orders/:id`** - Obtiene los detalles de un pedido y sus ítems por su ID.
-- **POST `/api/orders`** - Crea un pedido a partir del carrito.
+**Body login/register:**
+```json
+{
+  "names": "Juan",
+  "first_lastname": "Pérez",
+  "second_lastname": "López",
+  "email": "juan@ejemplo.com",
+  "password": "MiPassword123!",
+  "phone": "5551234567",
+  "role": "customer"
+}
+```
 
-### 💳 Pagos (`/api/payments`)
-- **GET `/api/payments/:id`** - Obtiene detalles individuales de un pago por su ID.
-- **GET `/api/payments/order/:orderId`** - Obtiene el pago relacionado a un pedido.
-- **POST `/api/payments`** - Registra un pago relacionado a un pedido.
+---
 
-### 🚚 Envíos (`/api/shipments`)
-- **GET `/api/shipments/:id`** - Obtiene detalles individuales de un envío por su ID.
-- **GET `/api/shipments/order/:orderId`** - Obtiene detalles de envío por el ID del pedido.
-- **POST `/api/shipments`** - Crea información de envío para un pedido.
-- **PUT `/api/shipments/:id`** - Actualiza el estado (shipment_status) de un envío.
+### 🏪 Tiendas `/api/stores`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar tiendas (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener tienda por ID |
+| `POST` | `/` | ✅ JWT | Crear tienda |
+| `PUT` | `/:id` | ✅ JWT | Actualizar tienda |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar tienda |
+
+---
+
+### 📦 Productos `/api/products`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar productos (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener producto por ID |
+| `POST` | `/` | ✅ JWT | Crear producto |
+| `PUT` | `/:id` | ✅ JWT | Actualizar producto |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar producto |
+
+---
+
+### 🛒 Carrito `/api/cart`
+
+> El `user_id` ya **no se envía en el body** — se extrae del JWT automáticamente.  
+> Ya **no existe `store_id`** en el carrito. Cada usuario tiene un carrito global.
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Ver carrito del usuario autenticado |
+| `POST` | `/` | ✅ JWT | Agregar ítem al carrito |
+| `PUT` | `/:product_id` | ✅ JWT | Actualizar cantidad de un ítem |
+| `DELETE` | `/:product_id` | ✅ JWT | Eliminar ítem del carrito |
+
+**Body POST /api/cart:**
+```json
+{
+  "product_id": "uuid-del-producto",
+  "quantity": 2,
+  "unit_price": 299.99
+}
+```
+
+**Body PUT /api/cart/:product_id:**
+```json
+{
+  "quantity": 5
+}
+```
+
+---
+
+### 📋 Categorías `/api/categories`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar categorías (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener categoría por ID |
+| `POST` | `/` | ✅ JWT | Crear categoría |
+| `PUT` | `/:id` | ✅ JWT | Actualizar categoría |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar categoría |
+
+---
+
+### 🏷️ Marcas `/api/brands`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar marcas (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener marca por ID |
+| `POST` | `/` | ✅ JWT | Crear marca |
+| `PUT` | `/:id` | ✅ JWT | Actualizar marca |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar marca |
+
+---
+
+### 🧾 Pedidos `/api/orders`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar pedidos (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener pedido por ID |
+| `POST` | `/` | ✅ JWT | Crear pedido |
+| `PUT` | `/:id` | ✅ JWT | Actualizar pedido |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar pedido |
+
+---
+
+### 💳 Pagos `/api/payments`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar pagos (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener pago por ID |
+| `POST` | `/` | ✅ JWT | Registrar pago |
+| `PUT` | `/:id` | ✅ JWT | Actualizar pago |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar pago |
+
+---
+
+### 🚚 Envíos `/api/shipments`
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `GET` | `/` | ✅ JWT | Listar envíos (máx. 15) |
+| `GET` | `/:id` | ✅ JWT | Obtener envío por ID |
+| `POST` | `/` | ✅ JWT | Crear envío |
+| `PUT` | `/:id` | ✅ JWT | Actualizar envío |
+| `DELETE` | `/:id` | ✅ JWT | Eliminar envío |
+
+---
+
+### 🔧 Mantenimiento `/api/maintenance`
+
+> ⚠️ Solo accesible con JWT de usuario con `role: "admin"`.
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| `POST` | `/alter-cart-table` | ✅ Admin | Aplica la migración de `shopping_cart` (quita `store_id`). Ejecutar **una sola vez** |
+| `DELETE` | `/clear-all` | ✅ Admin | Elimina **todos** los registros de la BD (orden correcto de FKs) |
+
+---
+
+## Flujo de autenticación
+
+```
+1. POST /api/users/register  →  crear cuenta
+2. POST /api/users/login     →  obtener JWT token
+3. Incluir en cada request:
+   Header: Authorization: Bearer <token>
+```
+
+El token expira en `JWT_EXPIRES_IN` (por defecto 24h).
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── config/
+│   ├── db.js               # Pool de conexión MySQL
+│   └── authMiddleware.js   # JWT middleware + requireRole()
+├── controllers/
+│   ├── userController.js
+│   ├── storeController.js
+│   ├── categoryController.js
+│   ├── brandController.js
+│   ├── productController.js
+│   ├── cartController.js
+│   ├── orderController.js
+│   ├── paymentController.js
+│   ├── shipmentController.js
+│   └── maintenanceController.js
+├── routes/
+│   ├── userRoutes.js
+│   ├── storeRoutes.js
+│   ├── categoryRoutes.js
+│   ├── brandRoutes.js
+│   ├── productRoutes.js
+│   ├── cartRoutes.js
+│   ├── orderRoutes.js
+│   ├── paymentRoutes.js
+│   ├── shipmentRoutes.js
+│   └── maintenanceRoutes.js
+└── index.js                # Entry point, configuración global
+```

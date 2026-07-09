@@ -184,19 +184,18 @@ CREATE INDEX idx_customer_addresses_user ON customer_addresses(user_id);
 -- ============================================
 -- CARRITO DE COMPRA
 -- ============================================
+-- Nota: store_id eliminado (2026-07-09). Cada usuario tiene un único carrito global.
+-- El carrito no está ligado a una tienda; los productos en él pertenecen a distintas tiendas.
 
 CREATE TABLE shopping_cart (
   id          CHAR(36)  PRIMARY KEY DEFAULT (UUID()),
   user_id     CHAR(36)  NOT NULL,
-  store_id    CHAR(36)  NOT NULL,
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_cart_user  FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
-  CONSTRAINT fk_cart_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
-  UNIQUE (user_id, store_id)  -- un usuario no puede tener dos carritos activos de la misma tienda
+  CONSTRAINT fk_cart_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_cart_user (user_id)  -- un usuario tiene un solo carrito activo
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_shopping_cart_user  ON shopping_cart(user_id);
-CREATE INDEX idx_shopping_cart_store ON shopping_cart(store_id);
+CREATE INDEX idx_shopping_cart_user ON shopping_cart(user_id);
 
 
 -- ============================================

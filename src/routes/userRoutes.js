@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const authMiddleware = require('../config/authMiddleware');
 
-router.get('/', userController.getAllUsers);
-router.get('/:id', userController.getUserById);
+// Rutas públicas
 router.post('/register', userController.register);
 router.post('/login', userController.login);
-router.post('/', userController.createUser); // Compatible with legacy or admin
-router.put('/:id', userController.updateUser);
-router.delete('/:id', userController.deleteUser);
+
+// Rutas protegidas (requieren JWT)
+router.get('/', authMiddleware, userController.getAllUsers);
+router.get('/:id', authMiddleware, userController.getUserById);
+router.put('/:id', authMiddleware, userController.updateUser);
+router.delete('/:id', authMiddleware, userController.deleteUser);
 
 module.exports = router;
